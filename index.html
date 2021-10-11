@@ -1,0 +1,100 @@
+<html>
+<head>
+
+</head>
+<body>
+<script src="html5-qrcode.min.js"></script>
+
+<div id="reader" width="50vw"></div>
+<div id="data" width="50vw"></div>
+<button onclick="submit()">Submit</button>
+
+<script>
+for (var key in sessionStorage) {
+if (key.indexOf("QR_")==0) {
+sessionStorage.removeItem(key)
+}
+}
+function onScanSuccess(decodedText, decodedResult) {
+  // handle the scanned code as you like, for example:
+  console.log(`Code matched = ${decodedText}`, decodedResult);
+  sessionStorage.setItem("QR_"+decodedText, decodedText);
+  var add="";
+  for (var key in sessionStorage) {
+  if (key.indexOf("QR_")==0) {
+   add=add+`<table id="qr_`+sessionStorage[key]+`">
+<tr><td>QR Code</td><td>Status (Shooting)</td></tr>
+<tr><td>`+sessionStorage[key]+`</td><td>
+<select name="status" id="status_`+sessionStorage[key]+`">
+  <option value="Pending">Pending</option>
+  <option value="Damaged">Damaged</option>
+  <option value="Not found">Not found</option>
+  <option value="Waiting for shooting">Waiting for shooting</option>
+  <option value="Quality control">Quality control</option>
+  <option value="Re-shoot">Re-shoot</option>
+  <option value="For Outbounding">For Outbounding</option>
+</select></td></tr>
+</table>`;
+}
+  }
+
+  document.getElementById("data").innerHTML =add;
+  
+}
+
+function onScanFailure(error) {
+  // handle scan failure, usually better to ignore and keep scanning.
+  // for example:
+  console.warn(`Code scan error = ${error}`);
+}
+
+let html5QrcodeScanner = new Html5QrcodeScanner(
+  "reader",
+  { fps: 10, qrbox: {width: 750, height: 750} },
+  /* verbose= */ false);
+html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+
+async function submit() {
+try {
+console.log("submitted")
+var request=[];
+for (var key in sessionStorage) {
+if (key.indexOf("QR_")==0) {
+console.log("status_"+sessionStorage[key]);
+var status=document.getElementById("status_"+sessionStorage[key]).value;
+var asin=sessionStorage[key];
+request.push('Status (Shooting)='+encodeURIComponent(status)+'&ASIN='+encodeURIComponent(asin))
+
+}
+}
+for (var i=0;i<request.length;i++) {
+try {
+await Airtablewebhook(request[i]);
+} catch (e) {
+alert("Unexpected Error!")
+}
+await timeout(1000)
+}
+for (var key in sessionStorage) {
+if (key.indexOf("QR_")==0) {
+sessionStorage.removeItem(key)
+}
+}
+alert("Products Updated Successfully!")
+window.location.reload();
+} catch (e) {
+alert("Unexpected Error!")
+}
+}
+async function Airtablewebhook(req) {
+console.log("called Airtable")
+return await fetch('https://hooks.airtable.com/workflows/v1/genericWebhook/app3HWGHKiwUuUpFV/wflFUqrystWkzzdTL/wtrar84kpkm0oQOrL',{method:'POST',mode:'no-cors',body:(req),headers:{
+ 'Content-Type': "application/x-www-form-urlencoded; charset=UTF-8"
+}}).then(x=>x.text()).then(function(d){console.log(d);return d;})
+}
+    function timeout(ms) {
+       return new Promise(resolve => setTimeout(resolve, ms));
+    }
+</script>
+</body>
+</html>
