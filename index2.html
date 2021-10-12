@@ -1,0 +1,62 @@
+<html>
+<headers></headers>
+<body>
+<h3>Insert Batcodes Here:</h3>
+<textarea id="asins" name="asins" rows="4" cols="50">
+
+</textarea>
+<table id="qr">
+<tr><td>Status (Shooting)</td></tr>
+<tr><td>
+<select name="status" id="status">
+  <option value="Pending">Pending</option>
+  <option value="Damaged">Damaged</option>
+  <option value="Not found">Not found</option>
+  <option value="Waiting for shooting">Waiting for shooting</option>
+  <option value="Quality control">Quality control</option>
+  <option value="Re-shoot">Re-shoot</option>
+  <option value="For Outbounding">For Outbounding</option>
+</select></td></tr>
+</table>
+<button onclick="submit()">Submit</button>
+<script>
+async function submit() {
+var txt=document.getElementById("asins").value;
+txt=txt.replace(/\n/g,"").replaceAll(" ","")
+txt=txt.split("");
+var list=[];
+while (txt.length>0) {
+list.push(txt.slice(0,10).join(""))
+txt=txt.slice(10);
+}
+var request=[];
+var status=document.getElementById("status").value;
+
+
+for (var i=0;i<list.length;i++) {
+request.push('Status (Shooting)='+encodeURIComponent(status)+'&ASIN='+encodeURIComponent(list[i]))
+}
+
+for (var i=0;i<request.length;i++) {
+try {
+await Airtablewebhook(request[i]);
+} catch (e) {
+alert("Unexpected Error!")
+}
+await timeout(1000)
+}
+alert("Products Updated Successfully!")
+window.location.reload();
+}
+async function Airtablewebhook(req) {
+console.log("called Airtable")
+return await fetch('https://hooks.airtable.com/workflows/v1/genericWebhook/app3HWGHKiwUuUpFV/wflFUqrystWkzzdTL/wtrar84kpkm0oQOrL',{method:'POST',mode:'no-cors',body:(req),headers:{
+ 'Content-Type': "application/x-www-form-urlencoded; charset=UTF-8"
+}}).then(x=>x.text()).then(function(d){console.log(d);return d;})
+}
+    function timeout(ms) {
+       return new Promise(resolve => setTimeout(resolve, ms));
+    }
+</script>
+</body>
+</html>
